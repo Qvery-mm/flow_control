@@ -11,7 +11,11 @@ volatile int  flow_frequency;  // Measures flow meter pulses
 unsigned char flowmeter = 2;  // Flow Meter Pin number
 unsigned long currentTime;
 unsigned long cloopTime;
+
 unsigned long volume = 0;
+unsigned long lastVolume = 0;
+unsigned long limit = 4000000;
+
 int lowerPin = 1;
 int upperPin = 5;
 int valvePin = 3;
@@ -21,6 +25,7 @@ bool reset = false;
 void setup()
 { 
    volume = EEPROMReadlong(0);
+   lastVolume = volume;
    
    lcd.begin(16, 2);  
    delay(3000);
@@ -149,7 +154,7 @@ void loop ()
       if(!reset)
       {
         //check for limit
-        if(volume > 4000000)
+        if(volume > limit)
           printDisplay("limit exceeded!", 0);
         //перевод в литры и вывод на экран
         String liters = String(volume/1000), milliliters = String(volume % 1000);
@@ -157,8 +162,13 @@ void loop ()
           milliliters = "0" + milliliters;
         printDisplay(liters + "." + milliliters, 1);   
       }
-      //запись текущего состояния
-      EEPROMWritelong(0, volume);
    }
+   //запись текущего состояния
+   if(1000 <= abs(volume - lastVolume))
+   {
+      EEPROMWritelong(0, volume);
+      lastVolume = volume;
+   }
+
    detectButton();
 }
