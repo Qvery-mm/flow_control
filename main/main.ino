@@ -17,7 +17,7 @@ unsigned long limit = 4000000;
 
 int lowerPin = 3;
 int upperPin = 5;
-int valvePin = 5;
+int valvePin = 11;
 int lower, upper;
 bool reset = false;
 
@@ -140,11 +140,12 @@ void volumeControl()
 {
       lower = analogRead(lowerPin);
     upper = analogRead(upperPin);
-   // Serial.println(String(lower) +  " " + String(upper)); 
+   Serial.println(String(lower) +  " " + String(upper)); 
     if(lower > 1000 && upper > 1000)
        valveControl(OPEN);
     if(lower < 100 && upper < 100)
        valveControl(CLOSE);
+    
 }
 /*
 flowControl_1()
@@ -192,7 +193,7 @@ void loop ()
   //Serial.println(digitalRead(flow))
     //контроль наполнения
   volumeControl();
-  flowControl_3();
+  //flowControl_3();
 
   
    //запись текущего состояния
