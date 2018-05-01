@@ -14,10 +14,11 @@ int lower, upper;
 unsigned long currentTime;
 unsigned long cloopTime;
 bool isValveOpen = false;
+float lastState = 0;
 
 
 // count how many pulses!
-volatile uint16_t pulses = 0;
+volatile long pulses = 0;
 // track the state of the pulse pin
 volatile uint8_t lastflowpinstate;
 // you can try to keep time of how long it is between pulses
@@ -38,8 +39,6 @@ SIGNAL(TIMER0_COMPA_vect) {
     pulses++;
   }
   lastflowpinstate = x;
-  flowrate = 1000.0;
-  flowrate /= lastflowratetimer;  // in hertz
   lastflowratetimer = 0;
 }
 
@@ -55,6 +54,35 @@ void useInterrupt(boolean v) {
   }
 }
 
+void EEPROMWritelong(int address, long value)
+      {
+      //Decomposition from a long to 4 bytes by using bitshift.
+      //One = Most significant -> Four = Least significant byte
+      byte four = (value & 0xFF);
+      byte three = ((value >> 8) & 0xFF);
+      byte two = ((value >> 16) & 0xFF);
+      byte one = ((value >> 24) & 0xFF);
+
+      //Write the 4 bytes into the eeprom memory.
+      EEPROM.write(address, four);
+      EEPROM.write(address + 1, three);
+      EEPROM.write(address + 2, two);
+      EEPROM.write(address + 3, one);
+      }
+
+
+long EEPROMReadlong(long address)
+      {
+      //Read the 4 bytes from the eeprom memory.
+      long four = EEPROM.read(address);
+      long three = EEPROM.read(address + 1);
+      long two = EEPROM.read(address + 2);
+      long one = EEPROM.read(address + 3);
+
+      //Return the recomposed long by using bitshift.
+      return ((four << 0) & 0xFF) + ((three << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
+      }
+
 void clearLine(int line){
   lcd.setCursor(0, line);
   lcd.print("                ");
@@ -64,11 +92,14 @@ void setup() {
    Serial.begin(9600);
    Serial.print("Flow sensor test!");
    lcd.begin(16, 2);
-
+   
    pinMode(VALVEPIN, OUTPUT);
    
    pinMode(FLOWSENSORPIN, INPUT);
    digitalWrite(FLOWSENSORPIN, HIGH);
+
+   pulses = EEPROMReadlong(0);
+   lastState = pulses;
    lastflowpinstate = digitalRead(FLOWSENSORPIN);
    useInterrupt(true);
 }
@@ -92,7 +123,7 @@ void volumeControl()
    // запись текущего состояния
    if(1 <= abs(liters - lastState))
    {
-      EEPROMWritelong(0, volume);
+      EEPROMWritelong(0, long(pulses));
       lastState = liters;
    }
 
