@@ -15,6 +15,11 @@ unsigned long currentTime;
 unsigned long cloopTime;
 bool isValveOpen = false;
 float lastState = 0;
+int buzzer = 13;
+unsigned long lastTime = 0;
+bool isBeep = false; 
+bool mute = false;
+int limit = 4000;
 
 
 // count how many pulses!
@@ -94,6 +99,7 @@ void setup() {
    lcd.begin(16, 2);
    
    pinMode(VALVEPIN, OUTPUT);
+   pinMode(buzzer, OUTPUT);
    
    pinMode(FLOWSENSORPIN, INPUT);
    digitalWrite(FLOWSENSORPIN, HIGH);
@@ -102,6 +108,23 @@ void setup() {
    lastState = pulses;
    lastflowpinstate = digitalRead(FLOWSENSORPIN);
    useInterrupt(true);
+}
+
+void beep()
+{
+  const int A5 = 880;
+  if(isBeep && abs(currentTime - lastTime) > 500)
+  {
+    noTone(buzzer);
+    lastTime = currentTime;
+    isBeep = false;
+  }
+  else if(!isBeep && abs(currentTime - lastTime) > 15000)
+  {
+    tone(buzzer, A5);
+    lastTime = currentTime;
+    isBeep = true;
+  }
 }
 
 void volumeControl()
@@ -133,7 +156,21 @@ void volumeControl()
   {
     clearLine(0);
     lcd.setCursor(0, 0);
-    lcd.print("Volume:");
+    if(liters < limit)
+    {
+      lcd.print("Volume:");
+      if(isBeep)
+      {
+        noTone(buzzer);
+        isBeep = false;
+      }
+    }
+    else
+    {
+      lcd.print("Limit exceeded!");
+      if(!mute)
+        beep();  
+    }
     clearLine(1);
     lcd.setCursor(0, 1);
     lcd.print(liters); lcd.print(" Liters        ");
@@ -145,11 +182,11 @@ void valveControl()
       lower = analogRead(LOWERSENSORPIN);
       upper = analogRead(HIGHERSENSORPIN);
       //Serial.println(String(lower) + " " + String(upper));
-      if(lower > 1000 && upper > 1000)
+      if(lower > 600 && upper > 600)
       {
           digitalWrite(VALVEPIN, true); //open
       }
-      else if(lower < 100 && upper < 100)
+      else if(lower < 500 && upper < 500)
       {
           digitalWrite(VALVEPIN, false); //close
       }
@@ -158,7 +195,7 @@ void valveControl()
 }
 int detectButton() {
   int keyAnalog =  analogRead(A0);
-  //Serial.println(keyAnalog);
+  Serial.println(keyAnalog);
   if(keyAnalog > 630 && keyAnalog < 650 && !reset)
   {
     clearLine(0);
@@ -168,6 +205,7 @@ int detectButton() {
     lcd.setCursor(0, 1);
     lcd.print("Y/N");
     reset = true;
+    mute = false;
   }
   if(keyAnalog < 10 && reset)
   {
@@ -178,6 +216,11 @@ int detectButton() {
     pulses = 0; 
     reset = false;
   }
+  if(keyAnalog > 245 && keyAnalog < 265)
+  {
+    mute = true;
+  }
+  
   
 }
 
@@ -193,9 +236,8 @@ void loop()                     // run over and over again
       cloopTime = currentTime;              // Updates cloopTime
       volumeControl();
     }
-
-    
-    
+  
+      
     detectButton();
   
 }
